@@ -1,0 +1,27 @@
+{
+  "name": "jquery.peer",
+  "version": "0.0.0",
+  "authors": [
+    "Michelle Bu <michelle@michellebu.com>"
+  ],
+  "description": "Easy WebRTC with jQuery!",
+  "main": "jquery.peer.js",
+  "keywords": [
+    "jQuery",
+    "peerjs",
+    "webrtc",
+    "peers",
+    "p2p"
+  ],
+  "license": "MIT",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "peerjs": "~0.3.7"
+  }
+}
