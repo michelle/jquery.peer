@@ -1,4 +1,4 @@
-/*! jquery.peer 0.0.0 (2014-03-01). @michelle */
+/*! jquery.peer 0.0.0 (2014-03-02). @michelle */
 
 (function($) {
 
@@ -20,7 +20,7 @@
 
   Connection.prototype.createPeer = function() {
     // TODO(later): switch to a different key for tracking purposes.
-    this.peer = new Peer(this.id, {key: 'lwjd5qra8257b9'});
+    this.peer = new Peer(this.id, {key: 'lwjd5qra8257b9', debug: true});
 
     var self = this;
     this.peer.on('error', function(err) {
@@ -29,7 +29,7 @@
 
     this.peer.on('open', function() {
       self.ready = true;
-      if (typeof self.pendingCall !== undefined) {
+      if (typeof self.pendingCall !== 'undefined') {
         self.startCall(self.pendingCall);
       }
     });
@@ -63,7 +63,7 @@
         $('#peer-video-local').prop('src', URL.createObjectURL(stream));
       }
 
-      if (typeof self.pendingCall !== undefined) {
+      if (typeof self.pendingCall !== 'undefined') {
         self.startCall(self.pendingCall);
       }
     });
@@ -156,6 +156,14 @@
         throw new Error('You need to import PeerJS in order to use jquery.peer. Try putting this in your HTML: `<script type="text/javascript" src="http://cdn.peerjs.com/0.3/peer.js"></script>`');
       }
 
+      if (this._peerType && this._peerType !== type) {
+        throw new Error('This element is already a ' + this._peerType + ' peer.');
+      }
+
+      if (this.length !== 1) {
+        throw new Error('You may select exactly one element. Currently ' + this.length + ' element(s) are selected.');
+      }
+
       if (typeof options === 'function') {
         callback = options;
         options = undefined;
@@ -179,10 +187,13 @@
         }
       }
 
-      if (type === 'media') {
-        constructMediaElements(this, options.hideAllDisplays, options.hideOwnVideo);
-      } else {
-        // ?
+      if (!this._initialized) {
+        this._initialized = true;
+        if (type === 'media') {
+          constructMediaElements(this, options.hideAllDisplays, options.hideOwnVideo);
+        } else {
+          // ?
+        }
       }
 
 
@@ -191,9 +202,11 @@
       this._peerRoom = options.room;
 
       callback.call(this);
+      return this;
     },
 
     call: function(identifier) {
+      console.log('Call called', identifier);
       this._checkPeerType('media');
       this._peerConnection.startCall(this._peerRoom ? this._peerRoom + '-' + identifier : identifier);
     },
