@@ -4,14 +4,12 @@
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
     <meta http-equiv="Content-Language" content="en-us">
 
-    <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.6.2/jquery.min.js"></script>
-    <script type="text/javascript" src="http://cdn.peerjs.com/0.3/peer.js"></script>
-    <script type="text/javascript" src="../jquery.peer.js"></script>
+    <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>
+    <script type="text/javascript" src="http://cdn.peerjs.com/latest/peer.js"></script>
+    <script type="text/javascript" src="../lib/jquery.peer.js"></script>
     <script>
       $(document).ready(function() {
-        $('#peer').peer('media', 'michelle', function() {
-          this.call('eric');
-        });
+        $('#peer').peer({id: 'michelle', room: 'test'});
       });
     </script>
   </head>
