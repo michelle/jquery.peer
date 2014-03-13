@@ -1,0 +1,32 @@
+.peer-video-local, .peer-video-remote {
+  background-color: #000;
+}
+
+.peer-video-remote {
+  position: absolute;
+  width: 600px;
+  height: 400px;
+}
+
+.peer-video-local {
+  position: absolute;
+  width: 150px;
+  right: 110px;
+  top: 10px;
+}
+
+.peer-container {
+  position: relative;
+  width: 700px;
+}
+
+.peer-buddy-list {
+  position: absolute;
+  right: 0px;
+  width: 90px;
+}
+
+.peer-notification {
+  position: absolute;
+  top: 410px;
+}
