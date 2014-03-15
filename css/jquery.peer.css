@@ -26,7 +26,11 @@
   width: 90px;
 }
 
-.peer-notification {
+.peer-controls {
   position: absolute;
   top: 410px;
+}
+
+.peer-hidden-element {
+  display: none;
 }
