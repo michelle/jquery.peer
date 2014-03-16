@@ -18,6 +18,7 @@
 .peer-container {
   position: relative;
   width: 700px;
+  height: 200px;
 }
 
 .peer-buddy-list {

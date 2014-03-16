@@ -9,9 +9,14 @@ Made for jQueryTO 2014 :)
 
 `room`
 
-`manualCalls`
-
 `hideAllControls`
+
+`timeout`: milliseconds to wait before giving up on a call/connection.
+
+
+### media
+
+`manualCalls`: allows you to answer calls manually.
 
 `hideOwnVideo`
 
@@ -21,7 +26,9 @@ Made for jQueryTO 2014 :)
 
 `answerCallText`
 
-`timeout`
+
+### data
+
 
 
 ## methods

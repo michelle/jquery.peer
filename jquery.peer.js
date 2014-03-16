@@ -1,4 +1,4 @@
-/*! jquery.peer 0.0.0 (2014-03-13). @michelle */
+/*! jquery.peer 0.0.0 (2014-03-15). @michelle */
 
 (function($) {
 
@@ -17,15 +17,21 @@
     this.internalId = options.type + '-' + (this.room ? this.room + '-' : '') + this.id;
 
     this.isMedia = options.type === 'media';
-    this.$el = $el;
+    this.$el = $('<div>');
+    this.$el.addClass('peer-container');
+    this.$parent = $el;
+    $el.append(this.$el);
 
+    this._constructCommonElements();
     if (this.isMedia) {
       // Create local stream.
       this._createStream();
-      this._constructMediaElements(options.hideAllDisplays, options.hideOwnVideo);
+      this._constructMediaElements();
     } else {
+      //this._constructDataElements();
       // ?
     }
+
     this._setupHandlers()
 
     this._createPeer();
@@ -34,13 +40,53 @@
   Connection.prototype._setupHandlers = function() {
     var self = this;
     this.$el.on('click', '.peer-buddy', function() {
-      self.call($(this).text());
+      var peer = $(this).text();
+      if (self.isMedia) {
+        self.call(peer);
+      } else {
+        self.connect(peer);
+      }
     });
+    this.$el.on('click', '.peer-end-call', function() {
+      if (self.isMedia) {
+        self.endCall();
+      } else {
+        self.endConnection();
+      }
+    });
+    this.$el.on('click', '.peer-answer-call', function() {
+      if (self.isMedia) {
+        self.answerCall();
+      }
+    });
+
+    if (!this.isMedia) {
+      this.$parent.on('submit', function(ev) {
+        ev.preventDefault();
+
+        self.$parent.find('input').each(function() {
+          // TODO: files
+          var value = $(this).val();
+          if (value && self.connection) {
+            self.connection.send(value);
+          }
+        });
+      });
+    }
   };
 
   Connection.prototype._createPeer = function() {
     // TODO(later): switch to a different key for tracking purposes.
-    this.peer = new Peer(this.internalId + (this.idOffset ? this.idOffset : ''), {key: 'lwjd5qra8257b9', debug: true});
+    // We have to make a new Peer every time because we need to differentiate
+    // between elements.
+    this.peer = new Peer(this.internalId + (this.idOffset ? this.idOffset : ''), {
+      key: 'lwjd5qra8257b9',
+      debug: true,
+      config: {'iceServers': [
+        {url: 'stun:stun.l.google.com:19302'},
+        {url: 'turn:homeo@turn.bistri.com:80', credential: 'homeo'}
+      ]}
+    });
 
     var self = this;
     this.peer.on('error', function(err) {
@@ -62,29 +108,54 @@
 
     if (this.isMedia) {
       this.peer.on('call', function(remoteCall) {
+        self.peerId = remoteCall.peer.split('-').pop();
         self._maybeAnswerCall(remoteCall);
       });
     } else {
-      // ?
+      this.peer.on('connect', function(connection) {
+        self.connection = connection;
+        self._setupDataHandlers();
+        self.peerId = remoteCall.peer.split('-').pop();
+      });
     }
   };
 
   Connection.prototype._maybeAnswerCall = function(remoteCall) {
-    if (!this.inCall) {
-      // emit call so they can answer?
+    this.tempRemoteCall = remoteCall;
+    if (!this.inUse) {
       if (this.options.manualCalls) {
+        // emit a call if controls are hidden/ask if they want to answer?
+        this._showNotification(remoteCall.peer + ' is calling.');
+        this.$answerCall.removeClass('peer-hidden-element');
+        this.$parent.trigger('peer.call', remoteCall.peer);
       } else {
-        this.call = remoteCall;
-        this._setupCallHandlers();
-        this.call.answer(this.stream);
+        this.answerCall();
       }
+    } else if (this.options.manualCalls) {
+      this._showNotification(remoteCall.peer + ' is calling.');
+      this.$answerCall.removeClass('peer-hidden-element');
+    } else if (this.options.chatroulette) {
+      this.endCall();
+      this.answerCall();
+    } else {
+      // Otherwise, let it time out on the other side.
+      this.tempRemoteCall = undefined;
     }
-    // Otherwise, let it time out on the other side.
+  };
+
+  Connection.prototype.answerCall = function() {
+    this.call = this.tempRemoteCall;
+    this._setupCallHandlers();
+    this.call.answer(this.stream);
+
+    // Clean up
+    this.tempRemoteCall = undefined;
+    this.$answerCall.addClass('peer-hidden-element');
   };
 
   Connection.prototype._createStream = function() {
     var self = this;
-    navigator.getUserMedia({audio: true, video: true}, function(stream) {
+    navigator.getUserMedia({audio: !this.options.disableAudio, video: !this.options.disableVideo}, function(stream) {
       self.stream = stream;
 
       if (!self.options.hideOwnVideo) {
@@ -117,52 +188,100 @@
     }
   };
 
-  Connection.prototype._startCall = function(peerId) {
-    // Maybe we don't want to do this?
-    // Chatroulette style!
-    if (this.inCall && typeof this.pendingCall !== 'undefined') {
+  Connection.prototype._startDataConnection = function(qualifiedId) {
+    // Cancel current call.
+    if (this.inUse || typeof this.pendingConnection !== 'undefined') {
+      this._cancelConnection();
+    }
+
+    var self = this;
+    if (!this.isMedia) {
+      this.inUse = true;
+
+      // TODO(later): wait for local stream? Can we not?
+      if (!this.ready || !this.stream) {
+        this.pendingConnection = qualifiedId;
+        return;
+      }
+
+      this.pendingConnection = undefined;
+      this.connection = this.peer.connect(qualifiedId);
+      this._setupConnectionHandlers();
+      // TODO(later): clean this up!
+      setTimeout(this._cancelConnection.bind(this), this.options.timeout || 30000)
+    } else {
+      // ?
+    }
+  };
+
+  Connection.prototype._cancelConnection = function() {
+    this.inUse = false;
+    this.pendingConnection = undefined;
+    if (this.connection) {
+      this.connection.close();
+      this._showNotification('Ended connection with ' + this.peerId + '.');
+      this.connection = undefined;
+    }
+  };
+
+  Connection.prototype._startCall = function(qualifiedId) {
+    // Cancel current call.
+    if (this.inUse || typeof this.pendingCall !== 'undefined') {
       this._cancelCall();
     }
 
 
     var self = this;
     if (this.isMedia) {
-      this.inCall = true;
+      this.inUse = true;
 
-      // TODO: wait for local stream? Can we not?
+      // TODO(later): wait for local stream? Can we not?
       if (!this.ready || !this.stream) {
-        this.pendingCall = peerId;
+        this.pendingCall = qualifiedId;
         return;
       }
 
       this.pendingCall = undefined;
-      this.call = this.peer.call(peerId, this.stream);
+      this.call = this.peer.call(qualifiedId, this.stream);
       this._setupCallHandlers();
-      setTimeout(this._cancelCall.bind(this), this.options.callTimeout || 30000)
+      setTimeout(this._cancelCall.bind(this), this.options.timeout || 30000)
     } else {
       // ?
     }
+  };
+
+
+  Connection.prototype._setupDataHandlers = function() {
+    var self = this;
+    this.connection.on('data', function(data) {
+      self.$parent.trigger('peer.data', data);
+    });
   };
 
   Connection.prototype._setupCallHandlers = function() {
     var self = this;
     this.call.on('stream', function(stream) {
       self._showNotification('Connected to ' + self.peerId + '!');
+      self.$endCall.removeClass('peer-hidden-element');
       self.$remoteVideo.prop('src', URL.createObjectURL(stream));
     });
     this.call.on('error', function(err) {
       self._showNotification(err, 'error');
       throw err;
     });
-    // TODO(NOW): on close/disconnect!
+    this.call.on('close', function() {
+      self.$endCall.addClass('peer-hidden-element');
+      self._showNotification('Call with ' + self.peerId + ' ended.');
+    });
   };
 
   Connection.prototype._cancelCall = function() {
-    this.inCall = false;
+    this.inUse = false;
     this.pendingCall = undefined;
     if (this.call) {
       this.call.close();
-      self._showNotification('Ended call with ' + this.peerId + '.');
+      this._showNotification('Ended call with ' + this.peerId + '.');
+      this.call = undefined;
     }
   };
 
@@ -174,17 +293,27 @@
     }
   };
 
+  Connection.prototype.connect = function(identifier) {
+    this._checkPeerType('data');
+    this._startDataConnection(this._generateIdentifier(identifier));
+  };
+
   Connection.prototype.call = function(identifier) {
     this._checkPeerType('media');
+    this._startCall(this._generateIdentifier(identifier));
+  };
 
+  Connection.prototype._generateIdentifier = function(identifier) {
     this.peerId = identifier;
 
     if (this.room) {
       identifier = this.room + '-' + identifier;
     }
-    identifier = 'media-' + identifier;
+    return this.type + '-' + identifier;
+  };
 
-    this._startCall(identifier);
+  Connection.prototype.endCall = function() {
+    this._cancelCall();
   };
 
   Connection.prototype.availablePeers = function(cb) {
@@ -217,8 +346,25 @@
 
 
   // DOM helpers.
-  Connection.prototype._constructMediaElements = function(hideAllDisplays, hideOwnVideo) {
-    if (!hideOwnVideo) {
+  Connection.prototype._constructCommonElements = function() {
+
+    if (!this.options.hideAllControls) {
+      // Should be under common elements.
+      this.$buddyList = $('<div>');
+      this.$buddyList.addClass('peer-buddy-list');
+      this.$el.append(this.$buddyList);
+
+      this.$controls = $('<div>');
+      this.$controls.addClass('peer-controls');
+      this.$notifications = $('<div>');
+      this._resetNotification();
+      this.$controls.append(this.$notifications);
+    }
+
+  };
+
+  Connection.prototype._constructMediaElements = function() {
+    if (!this.options.hideOwnVideo) {
       this.$localVideo = $('<video autoplay>');
       this.$localVideo.addClass('peer-video-local');
       this.$localVideo.attr('muted', 'true');
@@ -227,26 +373,32 @@
 
     this.$remoteVideo = $('<video autoplay>');
     this.$remoteVideo.addClass('peer-video-remote');
-    this.$el.append(this.$remoteVideo);
+    this.$el.prepend(this.$remoteVideo);
 
-    if (!hideAllDisplays) {
-      this.$buddyList = $('<div>');
-      this.$buddyList.addClass('peer-buddy-list');
-      this.$el.append(this.$buddyList);
+    if (!this.options.hideAllControls) {
+      // Should be under common elements.
+      this.$endCall = $('<a>');
+      this.$endCall.addClass('peer-end-call peer-hidden-element');
+      this.$endCall.text(this.options.endCallText || 'End call');
+      this.$controls.append(this.$endCall);
 
-      this.$notifications = $('<div>');
-      this._resetNotification();
-      this.$el.append(this.$notifications);
+      this.$answerCall = $('<a>');
+      this.$answerCall.addClass('peer-answer-call peer-hidden-element');
+      this.$answerCall.text(this.options.answerCallText || 'Answer call');
+      this.$controls.append(this.$answerCall);
+
+      this.$el.append(this.$controls);
     }
   };
 
   Connection.prototype._refreshBuddyList = function() {
-    if (this.options.hideAllDisplays) {
+    if (this.options.hideAllControls) {
       return;
     }
 
     var self = this;
     this.availablePeers(function(peers) {
+      self.$buddyList.empty();
       peers.forEach(function(peer) {
         var $buddy = $('<div>');
         $buddy.attr('class', 'peer-buddy');
@@ -255,13 +407,13 @@
       });
 
       // Set timeout to repull buddy list.
-      // TODO: peerjs should probably push buddies.
+      // TODO(later): peerjs should probably push buddies.
       setTimeout(self._refreshBuddyList.bind(self), 30000);
     });
   };
 
   Connection.prototype._showNotification = function(message, type) {
-    if (this.options.hideAllDisplays) {
+    if (this.options.hideAllControls) {
       return;
     }
 
@@ -273,16 +425,12 @@
   };
 
   Connection.prototype._resetNotification = function() {
-    if (this.options.hideAllDisplays) {
+    if (this.options.hideAllControls) {
       return;
     }
 
     this.$notifications.attr('class', 'peer-notification peer-hidden');
     this.$notifications.text('');
-  };
-
-  // Utilities!
-  $.peer = {
   };
 
   // Make an element a peer!
@@ -292,7 +440,7 @@
       throw new Error('You need to import PeerJS in order to use jquery.peer. Try putting this in your HTML: `<script type="text/javascript" src="http://cdn.peerjs.com/latest/peer.js"></script>`');
     }
 
-    // TODO: maybe this is unnecessary.
+    // TODO(later): maybe this is unnecessary.
     if (this.length !== 1) {
       throw new Error('You may select exactly one element. Currently ' + this.length + ' element(s) are selected.');
     }
