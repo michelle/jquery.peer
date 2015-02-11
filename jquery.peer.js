@@ -1,4 +1,4 @@
-/*! jquery.peer 0.0.0 (2014-03-15). @michelle */
+/*! jquery.peer 0.0.0 (2015-02-10). @michelle */
 
 (function($) {
 
@@ -165,6 +165,9 @@
       if (typeof self.pendingCall !== 'undefined') {
         self._startCall(self.pendingCall);
       }
+    }, function(err) {
+      console.log('Error starting stream:', err);
+      // TODO(michelle): Handle errors.
     });
   };
 
