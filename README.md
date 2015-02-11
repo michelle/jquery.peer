@@ -1,53 +1,59 @@
-# jquery.peer: a work in progress.
+# jquery.peer
 
-Made for jQueryTO 2014 :)
+Peer-to-peer video chats built on top of WebRTC, with an easy-to-use jQuery interface.
 
+Support for data calls forthcoming!
 
-## options
+## Usage
 
-`id`
+```javascript
+// Instantiate your videochat element:
+$(‘#my-videochat-element’).peer([options]);
+```
 
-`room`
+---
 
-`hideAllControls`
+**Options:**
 
-`timeout`: milliseconds to wait before giving up on a call/connection.
+`options` is an optional hash of the following:
 
+- `id`: If unspecified, will be automatically generated for you.
+- `room`
+- `hideAllControls`: Hide the “End call” and “Room list” elements that are automatically placed in your `peer` element. If you hide these controls, you’ll need to make calls manually.
+- `timeout`: milliseconds to wait before giving up on a call/connection.
 
-### media
+**Advanced options:**
 
-`manualCalls`: allows you to answer calls manually.
+- `manualCalls`: When a call comes in, you can choose whether or not to accept it if `manualCalls` is enabled.
+- `hideOwnVideo`: Hide your own video from the display.
+- `chatroulette`: If true, existing call will end automatically when someone else calls.
+- `endCallText`: Custom text for the “End call” display.
+- `answerCallText`: Custom text for the “Answer call” display. This display is only shown if `manualCalls` is enabled.
 
-`hideOwnVideo`
+---
 
-`chatroulette`: automatically hang up exising call when someone else calls.
+**Making calls manually:**
 
-`endCallText`
+```javascript
+// Instantiate your videochat element and call a peer (`id`) in your room manually:
+$(‘#my-videochat-element’).peer([options]).peer(‘call’, id);
+```
 
-`answerCallText`
+`call` is just one of many available methods.
 
+---
 
-### data
+**Other available methods:**
 
+- `call`
+- `endCall`
+- `answerCall`
+- `connect` (WIP)
+- `endConnection` (WIP)
 
+---
 
-## methods
+**Events**
 
-`call`
-
-`connect`
-
-`endCall`
-
-`endConnection`
-
-`answerCall`
-
-
-## events
-
-`peer.data`
-
-`peer.call`
-
-
+- `peer.data`
+- `peer.call`
