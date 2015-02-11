@@ -8,6 +8,12 @@ Support for data calls forthcoming!
 
 This library requires that you also include [PeerJS](https://github.com/peers/peerjs) ^0.3.7.
 
+```html
+  <!-- Include the scripts in your HTML -->
+  <script type="text/javascript" src="http://cdn.peerjs.com/0.3.7/peer.min.js"></script>
+  <script type="text/javascript" src="jquery.peer.js"></script>
+```
+
 ```javascript
 // Instantiate your videochat element:
 $(‘#my-videochat-element’).peer([options]);
